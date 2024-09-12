@@ -1,7 +1,7 @@
 <h1 align="center">Welcome to Rust Notify 👋</h1>
 <p>
   <a href="https://github.com/bramhoven/rust-notify/blob/main/LICENSE" target="_blank">
-    <img alt="License: GPL--3.0" src="https://img.shields.io/badge/License-GPL--3.0-yellow.svg" />
+    <img alt="License: GPL-3.0" src="https://img.shields.io/badge/License-GPL-3.0-yellow.svg" />
   </a>
 </p>
 
@@ -25,5 +25,5 @@ Give a ⭐️ if this project helped you!
 ## 📝 License
 
 Copyright © 2024 [Bram Hoven](https://github.com/bramhoven).<br />
-This project is [GPL--3.0](https://github.com/bramhoven/rust-notify/blob/main/LICENSE) licensed.
+This project is [GPL-3.0](https://github.com/bramhoven/rust-notify/blob/main/LICENSE) licensed.
 
