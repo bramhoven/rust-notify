@@ -11,7 +11,7 @@
 
 👤 **Bram Hoven**
 
-* Website: bramhoven.nl
+* Website: [bramhoven.nl](https://bramhoven.nl)
 * Github: [@bramhoven](https://github.com/bramhoven)
 
 ## 🤝 Contributing
