@@ -1,15 +1,19 @@
 use axum::{
-    routing::{get},
+    routing::get,
     http::StatusCode,
-    Router, Json
+    Router,
 };
-use serde::{Serialize};
-use log::{info};
+use log::info;
 use tower_http::trace::TraceLayer;
 use tracing::Level;
 
 use clap::Parser;
+
 mod cli;
+mod routes;
+mod schemas;
+
+use routes::topic_routes;
 
 #[tokio::main]
 async fn main() {
@@ -36,7 +40,7 @@ async fn main() {
 async fn create_app() -> Router {
     let app = Router::new()
         .route("/", get(root))
-        .route("/topics", get(get_topics))
+        .route("/topics", get(topic_routes::get_topics))
         .layer(TraceLayer::new_for_http());
 
     app
@@ -45,27 +49,4 @@ async fn create_app() -> Router {
 async fn root() -> (StatusCode, &'static str) {
     (StatusCode::OK, "Hello, World!")
 }
-
-async fn get_topics() -> Json<Vec<Topic>> {
-    let mut topics: Vec<Topic> = vec![];
-
-    let tmp_topic = Topic::new("test-topic".to_string());
-    topics.push(tmp_topic);
-
-    Json(topics)
-}
-
-#[derive(Debug, Serialize)]
-struct Topic {
-    name: String,
-}
-
-impl Topic {
-    fn new(name: String) -> Self {
-        Self {
-            name
-        }
-    }
-}
-
 
