@@ -1,22 +1,18 @@
-use axum::{
-    routing::get,
-    http::StatusCode,
-    Router,
-};
 use log::info;
-use tower_http::trace::TraceLayer;
 use tracing::Level;
-
+use dotenvy::dotenv;
+use std::env;
 use clap::Parser;
 
+mod app;
 mod cli;
 mod routes;
 mod schemas;
-
-use routes::topic_routes;
+mod repository;
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
     let args = cli::arguments::CommandLineArguments::parse();
 
     tracing_subscriber::fmt()
@@ -29,24 +25,14 @@ async fn main() {
     bind_str.push_str(args.port.to_string().as_str());
 
 
-    let app = create_app().await;
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let conn = repository::database::establish_connection(&database_url);
+
+    let server = app::create_app().await;
 
     info!(target: "rust-notify", "starting server on: {}", bind_str);
 
     let listener = tokio::net::TcpListener::bind(bind_str).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
-}
-
-async fn create_app() -> Router {
-    let app = Router::new()
-        .route("/", get(root))
-        .route("/topics", get(topic_routes::get_topics))
-        .layer(TraceLayer::new_for_http());
-
-    app
-}
-
-async fn root() -> (StatusCode, &'static str) {
-    (StatusCode::OK, "Hello, World!")
+    axum::serve(listener, server).await.unwrap();
 }
 
