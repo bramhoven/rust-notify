@@ -10,6 +10,7 @@ mod models;
 mod routes;
 mod schemas;
 mod repository;
+mod utils;
 
 #[tokio::main]
 async fn main() {
