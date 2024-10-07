@@ -4,6 +4,7 @@ use crate::{schemas::topic_schema::TopicSchema, app::AppState, repository::{stor
 
 
 pub async fn get_topics(State(state): State<AppState>) -> Json<Vec<TopicSchema>> {
+    // TODO: Not have direct DB call in route controller
     let conn = state.pooled_connection.get().await.unwrap();
     let store = TopicStore::new();
 
