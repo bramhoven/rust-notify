@@ -29,24 +29,42 @@ pub async fn get_topics(State(state): State<AppState>) -> Json<Vec<TopicSchema>>
     Json(mapped_topics)
 }
 
-pub async fn add_topic(State(state): State<AppState>, ExtractJson(create_topic): ExtractJson<CreateTopicSchema>) -> Result<(StatusCode, Json<TopicSchema>), (StatusCode, Json<ErrorSchema>)> {
+pub async fn add_topic(State(state): State<AppState>, ExtractJson(create_topic_schema): ExtractJson<CreateTopicSchema>) -> Result<(StatusCode, Json<TopicSchema>), (StatusCode, Json<ErrorSchema>)> {
     // TODO: Not have direct DB call in route controller
     let conn = state.pooled_connection.get().await.unwrap();
     let store = TopicStore::new();
 
-    let create_topic: CreateTopic = create_topic.into();
+    let mut error: Option<diesel::result::Error> = None;
+
+    let create_topic: CreateTopic = create_topic_schema.clone().into();
     let topic: Option<TopicEntity> = match conn.interact(move |conn| {
         store.add_topic(conn, create_topic)
     }).await.unwrap() {
         Ok(topic) => Some(topic),
-        Err(_) => None
+        Err(err) => {
+            error = Some(err);
+            None
+        }
     };
 
     if topic.is_some() {
         let topic = Topic::from(topic.unwrap());
         let topic = TopicSchema::from(topic);
-        Ok((StatusCode::OK, Json(topic)))
-    } else {
-        Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to add topic") })))
+
+        return Ok((StatusCode::OK, Json(topic)));
+    } 
+
+    if error.is_some() {
+        return match error.unwrap() {
+            diesel::result::Error::DatabaseError(db_error, _) => {
+                match db_error {
+                    diesel::result::DatabaseErrorKind::UniqueViolation => Err((StatusCode::BAD_REQUEST, Json(ErrorSchema { error: format!("Topic with name '{}' already exists", create_topic_schema.name) }))),
+                    _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to add topic") }))),
+                }
+            },
+            _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to add topic") }))),
+        }
     }
+
+    Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to add topic") })))
 }

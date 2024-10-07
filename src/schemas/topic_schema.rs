@@ -12,7 +12,7 @@ pub struct TopicSchema {
     pub name: String,
 }
 
-#[derive(Debug, Deserialize, o2o)]
+#[derive(Debug, Deserialize, Clone, o2o)]
 #[owned_into(CreateTopic)]
 pub struct CreateTopicSchema {
     pub name: String,
