@@ -1,6 +1,9 @@
 use serde::Serialize;
+use o2o::o2o;
+use crate::models::topic::Topic;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, o2o)]
+#[from_owned(Topic)]
 pub struct TopicSchema {
     name: String,
 }
