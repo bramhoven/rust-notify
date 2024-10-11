@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use uuid::Uuid;
 
 use crate::{repository::entities::topic_entity::{TopicEntity, NewTopicEntity}, models::topic::CreateTopic};
 
@@ -15,6 +16,16 @@ impl TopicStore {
         topics
             .select(TopicEntity::as_select())
             .load(connection)
+            .optional()
+    }
+
+    pub fn get_topic(&self, connection: &mut PgConnection, topic_id: Uuid) -> Result<Option<TopicEntity>, diesel::result::Error> {
+        use crate::repository::schema::topics::dsl::*;
+
+        topics
+            .select(TopicEntity::as_select())
+            .find(topic_id)
+            .first(connection)
             .optional()
     }
 

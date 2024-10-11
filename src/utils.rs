@@ -2,7 +2,7 @@ pub mod serializable_uuid {
     use uuid::Uuid;
     use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
-    pub fn serialize<S>(val: &Uuid, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn _serialize<S>(val: &Uuid, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {

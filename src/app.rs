@@ -21,6 +21,7 @@ pub async fn create_app(pooled_connection: Pool) -> Router {
     let app = Router::new()
         .route("/", get(root))
         .route("/topics", get(topic_routes::get_topics))
+        .route("/topics/:topic_id", get(topic_routes::get_topic))
         .route("/topics", post(topic_routes::add_topic))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
