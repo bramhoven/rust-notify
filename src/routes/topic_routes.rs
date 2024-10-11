@@ -100,3 +100,45 @@ pub async fn add_topic(State(state): State<AppState>, ExtractJson(create_topic_s
 
     Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to add topic") })))
 }
+
+pub async fn update_topic(State(state): State<AppState>, Path(topic_id): Path<Uuid>, ExtractJson(update_topic_schema): ExtractJson<CreateTopicSchema>) -> Result<(StatusCode, Json<TopicSchema>), (StatusCode, Json<ErrorSchema>)> {
+    // TODO: Not have direct DB call in route controller
+    let conn = state.pooled_connection.get().await.unwrap();
+    let store = TopicStore::new();
+
+    let mut error: Option<diesel::result::Error> = None;
+
+    let update_topic: CreateTopic = update_topic_schema.clone().into();
+    let topic: Option<TopicEntity> = match conn.interact(move |conn| {
+        store.update_topic(conn, topic_id, update_topic)
+    }).await.unwrap() {
+        Ok(topic) => Some(topic),
+        Err(err) => {
+            error = Some(err);
+            None
+        }
+    };
+
+    if topic.is_some() {
+        let topic = Topic::from(topic.unwrap());
+        let topic = TopicSchema::from(topic);
+
+        return Ok((StatusCode::OK, Json(topic)));
+    }
+    else if topic.is_none() && error.is_none() {
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to update topic") })));
+    }
+    else if error.is_some() {
+        return match error.unwrap() {
+            diesel::result::Error::DatabaseError(db_error, _) => {
+                match db_error {
+                    diesel::result::DatabaseErrorKind::UniqueViolation => Err((StatusCode::BAD_REQUEST, Json(ErrorSchema { error: format!("Topic with name '{}' already exists", update_topic_schema.name) }))),
+                    _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to update topic") }))),
+                }
+            },
+            _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to update topic") }))),
+        }
+    }
+
+    Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to update topic") })))
+}

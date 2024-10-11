@@ -41,4 +41,13 @@ impl TopicStore {
             .returning(TopicEntity::as_returning())
             .get_result(connection)
     }
+
+    pub fn update_topic(&self, connection: &mut PgConnection, topic_id: Uuid, update_topic: CreateTopic) -> Result<TopicEntity, diesel::result::Error> {
+        use crate::repository::schema::topics::dsl::{topics, name};
+
+        diesel::update(topics.find(topic_id))
+            .set(name.eq(update_topic.name))
+            .returning(TopicEntity::as_returning())
+            .get_result(connection)
+    }
 }
