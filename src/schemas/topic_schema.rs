@@ -1,14 +1,17 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use o2o::o2o;
+use uuid::Uuid;
+use crate::models::topic::{Topic, CreateTopic};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, o2o)]
+#[from_owned(Topic)]
 pub struct TopicSchema {
-    name: String,
+    pub id: Uuid,
+    pub name: String,
 }
 
-impl TopicSchema {
-    pub fn new(name: String) -> Self {
-        Self {
-            name
-        }
-    }
+#[derive(Debug, Deserialize, Clone, o2o)]
+#[owned_into(CreateTopic)]
+pub struct CreateTopicSchema {
+    pub name: String,
 }

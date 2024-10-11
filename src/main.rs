@@ -6,9 +6,11 @@ use clap::Parser;
 
 mod app;
 mod cli;
+mod models;
 mod routes;
 mod schemas;
 mod repository;
+mod utils;
 
 #[tokio::main]
 async fn main() {
@@ -27,10 +29,10 @@ async fn main() {
 
     // Create database connection
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let _conn = repository::database::establish_connection(&database_url);
+    let pooled_conn = repository::database::establish_connection(&database_url);
 
     // Create server
-    let server = app::create_app().await;
+    let server = app::create_app(pooled_conn).await;
 
     info!(target: "rust-notify", "starting server on: {}", bind_str);
 
