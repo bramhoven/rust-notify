@@ -6,7 +6,7 @@ use axum::{
 use tower_http::trace::TraceLayer;
 use deadpool_diesel::postgres::Pool;
 
-use crate::routes::topic_routes;
+use crate::routes::{notification_routes, topic_routes};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -24,6 +24,10 @@ pub async fn create_app(pooled_connection: Pool) -> Router {
         .route("/topics", post(topic_routes::add_topic))
         .route("/topics/:topic_id", get(topic_routes::get_topic))
         .route("/topics/:topic_id", put(topic_routes::update_topic))
+        .route("/notifications", get(notification_routes::get_notifications))
+        .route("/notifications", post(notification_routes::add_notification))
+        .route("/notifications/:notification_id", get(notification_routes::get_notification))
+        .route("/notifications/:notification_id", put(notification_routes::update_notification))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
