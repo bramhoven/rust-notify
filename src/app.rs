@@ -6,18 +6,18 @@ use axum::{
 use tower_http::trace::TraceLayer;
 use deadpool_diesel::postgres::Pool;
 
-use crate::{routes::{notification_routes, topic_routes}, services::notification_service::NotificationService};
+use crate::{routes::{notification_routes, topic_routes}, services::{notification_service::NotificationService, topic_service::TopicService}};
 
 #[derive(Clone)]
 pub struct AppState {
-    pub pooled_connection: Pool,
     pub notification_service: NotificationService,
+    pub topic_service: TopicService,
 }
 
 pub async fn create_app(pooled_connection: Pool) -> Router {
     let state = AppState {
-        pooled_connection: pooled_connection.clone(),
-        notification_service: NotificationService::new(pooled_connection),
+        notification_service: NotificationService::new(pooled_connection.clone()),
+        topic_service: TopicService::new(pooled_connection.clone()),
     };
 
     let app = Router::new()

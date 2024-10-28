@@ -1,45 +1,39 @@
 use axum::{Json, extract::{State, Json as ExtractJson, Path}, http::StatusCode};
 use uuid::Uuid;
 
-use crate::{schemas::{topic_schema::{TopicSchema, CreateTopicSchema}, error_schema::ErrorSchema}, app::AppState, repository::{stores::topic_store::TopicStore, entities::topic_entity::TopicEntity}, models::topic::{Topic, CreateTopic}};
+use crate::{app::AppState, errors::ServiceError, schemas::{error_schema::ErrorSchema, topic_schema::{CreateTopicSchema, TopicSchema}}};
 
 
-pub async fn get_topics(State(state): State<AppState>) -> Json<Vec<TopicSchema>> {
-    // TODO: Not have direct DB call in route controller
-    let conn = state.pooled_connection.get().await.unwrap();
-    let store = TopicStore::new();
-
-    let topics: Vec<TopicEntity> = match conn.interact(move |conn| {
-        store.get_topics(conn)
-    }).await.unwrap() {
-        Ok(topics) => match topics {
-            Some(topics) => topics,
-            None => Vec::<TopicEntity>::new(),
-        },
-        Err(_) => Vec::<TopicEntity>::new(),
+pub async fn get_topics(State(state): State<AppState>) -> Result<(StatusCode, Json<Vec<TopicSchema>>), (StatusCode, Json<ErrorSchema>)> {
+    let mut error: Option<ServiceError> = None;
+    let topics = match state.topic_service.get_topics().await {
+        Ok(topics) => Some(topics),
+        Err(err) => {
+            error = Some(err);
+            None
+        }
     };
 
-    let mut mapped_topics: Vec<TopicSchema> = vec![];
+    if topics.is_some() {
+        let mut mapped_topics: Vec<TopicSchema> = vec![];
+        for topic in topics.unwrap().into_iter() {
+            let topic = TopicSchema::from(topic);
+            mapped_topics.push(topic);
+        }
 
-    for topic in topics.into_iter() {
-        let topic = Topic::from(topic);
-        let topic = TopicSchema::from(topic);
-        mapped_topics.push(topic);
+        return Ok((StatusCode::OK, Json(mapped_topics)));
+    }
+    else if topics.is_none() && error.is_none() {
+        return Ok((StatusCode::OK, Json(Vec::<TopicSchema>::new())));
     }
 
-    Json(mapped_topics)
+    Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to get topics") })))
 }
 
 pub async fn get_topic(State(state): State<AppState>, Path(topic_id): Path<Uuid>) -> Result<(StatusCode, Json<TopicSchema>), (StatusCode, Json<ErrorSchema>)>  {
-    // TODO: Not have direct DB call in route controller
-    let conn = state.pooled_connection.get().await.unwrap();
-    let store = TopicStore::new();
-
-    let mut error: Option<diesel::result::Error> = None;
-    let topic: Option<TopicEntity> = match conn.interact(move |conn| {
-        store.get_topic(conn, topic_id)
-    }).await.unwrap() {
-        Ok(topic) => topic,
+    let mut error: Option<ServiceError> = None;
+    let topic = match state.topic_service.get_topic(topic_id).await {
+        Ok(topic) => Some(topic),
         Err(err) => {
             error = Some(err);
             None
@@ -47,8 +41,7 @@ pub async fn get_topic(State(state): State<AppState>, Path(topic_id): Path<Uuid>
     };
 
     if topic.is_some() {
-        let topic = Topic::from(topic.unwrap());
-        let topic = TopicSchema::from(topic);
+        let topic = TopicSchema::from(topic.unwrap());
 
         return Ok((StatusCode::OK, Json(topic)));
     } 
@@ -60,16 +53,9 @@ pub async fn get_topic(State(state): State<AppState>, Path(topic_id): Path<Uuid>
 }
 
 pub async fn add_topic(State(state): State<AppState>, ExtractJson(create_topic_schema): ExtractJson<CreateTopicSchema>) -> Result<(StatusCode, Json<TopicSchema>), (StatusCode, Json<ErrorSchema>)> {
-    // TODO: Not have direct DB call in route controller
-    let conn = state.pooled_connection.get().await.unwrap();
-    let store = TopicStore::new();
-
-    let mut error: Option<diesel::result::Error> = None;
-
-    let create_topic: CreateTopic = create_topic_schema.clone().into();
-    let topic: Option<TopicEntity> = match conn.interact(move |conn| {
-        store.add_topic(conn, create_topic)
-    }).await.unwrap() {
+    let create_topic = create_topic_schema.clone().into();
+    let mut error: Option<ServiceError> = None;
+    let topic = match state.topic_service.add_topic(create_topic).await {
         Ok(topic) => Some(topic),
         Err(err) => {
             error = Some(err);
@@ -78,40 +64,20 @@ pub async fn add_topic(State(state): State<AppState>, ExtractJson(create_topic_s
     };
 
     if topic.is_some() {
-        let topic = Topic::from(topic.unwrap());
-        let topic = TopicSchema::from(topic);
-
+        let topic = TopicSchema::from(topic.unwrap());
         return Ok((StatusCode::OK, Json(topic)));
     }
-    else if topic.is_none() && error.is_none() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to add topic") })));
-    }
-    else if error.is_some() {
-        return match error.unwrap() {
-            diesel::result::Error::DatabaseError(db_error, _) => {
-                match db_error {
-                    diesel::result::DatabaseErrorKind::UniqueViolation => Err((StatusCode::BAD_REQUEST, Json(ErrorSchema { error: format!("Topic with name '{}' already exists", create_topic_schema.name) }))),
-                    _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to add topic") }))),
-                }
-            },
-            _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to add topic") }))),
-        }
-    }
 
-    Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to add topic") })))
+    return match error.unwrap() {
+        ServiceError::NotUnique => Err((StatusCode::BAD_REQUEST, Json(ErrorSchema { error: format!("Topic with name '{}' already exists", create_topic_schema.name) }))),
+        _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to add topic") }))),
+    }
 }
 
 pub async fn update_topic(State(state): State<AppState>, Path(topic_id): Path<Uuid>, ExtractJson(update_topic_schema): ExtractJson<CreateTopicSchema>) -> Result<(StatusCode, Json<TopicSchema>), (StatusCode, Json<ErrorSchema>)> {
-    // TODO: Not have direct DB call in route controller
-    let conn = state.pooled_connection.get().await.unwrap();
-    let store = TopicStore::new();
-
-    let mut error: Option<diesel::result::Error> = None;
-
-    let update_topic: CreateTopic = update_topic_schema.clone().into();
-    let topic: Option<TopicEntity> = match conn.interact(move |conn| {
-        store.update_topic(conn, topic_id, update_topic)
-    }).await.unwrap() {
+    let update_topic = update_topic_schema.clone().into();
+    let mut error: Option<ServiceError> = None;
+    let topic = match state.topic_service.update_topic(topic_id, update_topic).await {
         Ok(topic) => Some(topic),
         Err(err) => {
             error = Some(err);
@@ -120,25 +86,12 @@ pub async fn update_topic(State(state): State<AppState>, Path(topic_id): Path<Uu
     };
 
     if topic.is_some() {
-        let topic = Topic::from(topic.unwrap());
-        let topic = TopicSchema::from(topic);
-
+        let topic = TopicSchema::from(topic.unwrap());
         return Ok((StatusCode::OK, Json(topic)));
     }
-    else if topic.is_none() && error.is_none() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to update topic") })));
-    }
-    else if error.is_some() {
-        return match error.unwrap() {
-            diesel::result::Error::DatabaseError(db_error, _) => {
-                match db_error {
-                    diesel::result::DatabaseErrorKind::UniqueViolation => Err((StatusCode::BAD_REQUEST, Json(ErrorSchema { error: format!("Topic with name '{}' already exists", update_topic_schema.name) }))),
-                    _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to update topic") }))),
-                }
-            },
-            _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to update topic") }))),
-        }
-    }
 
-    Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to update topic") })))
+    return match error.unwrap() {
+        ServiceError::NotUnique => Err((StatusCode::BAD_REQUEST, Json(ErrorSchema { error: format!("Topic with name '{}' already exists", update_topic_schema.name) }))),
+        _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to update topic") }))),
+    }
 }
