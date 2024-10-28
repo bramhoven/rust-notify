@@ -119,6 +119,7 @@ impl TopicService {
         }).await.unwrap() {
             Ok(topic) => Some(topic),
             Err(err) => {
+                error_log!("Failed to update topic {}: {}", topic_id, err);
                 error = Some(err);
                 None
             }
@@ -138,6 +139,27 @@ impl TopicService {
             },
             _ => Err(ServiceError::Error),
         }
+    }
+
+    pub async fn delete_topic(&self, topic_id: Uuid) -> Result<(), ServiceError> {
+        let conn = self.pooled_connection.get().await.unwrap();
+        let store = TopicStore::new();
+
+        let error: Option<diesel::result::Error> = match conn.interact(move |conn| {
+            store.delete_topic(conn, topic_id)
+        }).await.unwrap() {
+            Ok(_) => None,
+            Err(err) => {
+                error_log!("Failed to delete topic {}: {}", topic_id, err);
+                Some(err)
+            },
+        };
+
+        if error.is_some() {
+            return Err(ServiceError::Error)
+        }
+
+        Ok(())
     }
 }
 

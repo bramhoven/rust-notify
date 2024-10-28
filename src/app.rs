@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, post, put},
+    routing::{get, post, put, delete},
     http::StatusCode,
     Router,
 };
@@ -26,6 +26,7 @@ pub async fn create_app(pooled_connection: Pool) -> Router {
         .route("/topics", post(topic_routes::add_topic))
         .route("/topics/:topic_id", get(topic_routes::get_topic))
         .route("/topics/:topic_id", put(topic_routes::update_topic))
+        .route("/topics/:topic_id", delete(topic_routes::delete_topic))
         .route("/notifications", get(notification_routes::get_notifications))
         .route("/notifications", post(notification_routes::add_notification))
         .route("/notifications/:notification_id", get(notification_routes::get_notification))

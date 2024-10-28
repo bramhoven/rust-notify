@@ -95,3 +95,17 @@ pub async fn update_topic(State(state): State<AppState>, Path(topic_id): Path<Uu
         _ => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: String::from("Failed to update topic") }))),
     }
 }
+
+pub async fn delete_topic(State(state): State<AppState>, Path(topic_id): Path<Uuid>) -> Result<StatusCode, (StatusCode, Json<ErrorSchema>)> {
+    let error: Option<ServiceError> = match state.topic_service.delete_topic(topic_id).await {
+        Ok(_) => None,
+        Err(err) => Some(err),
+    };
+
+    if error.is_some() {
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorSchema { error: format!("Failed to delete topic '{}'", topic_id) })));
+    }
+
+
+    Ok(StatusCode::OK)
+}
