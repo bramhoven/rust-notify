@@ -1,7 +1,7 @@
 use axum::{Json, extract::{State, Json as ExtractJson, Path}, http::StatusCode};
 use uuid::Uuid;
 
-use crate::{app::AppState, errors::ServiceError, models::notification::{self, CreateNotification, Notification}, repository::{entities::notification_entity::NotificationEntity, schema::notifications, stores::notification_store::NotificationStore}, schemas::{error_schema::ErrorSchema, notification_schema::{CreateNotificationSchema, NotificationSchema}}};
+use crate::{app::AppState, errors::ServiceError, models::notification::{CreateNotification, Notification}, schemas::{error_schema::ErrorSchema, notification_schema::{CreateNotificationSchema, NotificationSchema}}};
 
 
 pub async fn get_notifications(State(state): State<AppState>) -> Result<(StatusCode, Json<Vec<NotificationSchema>>), (StatusCode, Json<ErrorSchema>)> {

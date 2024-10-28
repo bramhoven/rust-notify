@@ -23,7 +23,7 @@ impl NotificationService {
         let conn = self.pooled_connection.get().await.unwrap();
         let store = NotificationStore::new();
 
-       let mut error: Option<diesel::result::Error> = None;
+        let mut error: Option<diesel::result::Error> = None;
         let notifications: Vec<NotificationEntity> = match conn.interact(move |conn| {
             store.get_notifications(conn)
         }).await.unwrap() {
@@ -38,14 +38,14 @@ impl NotificationService {
             },
         };
 
+        if error.is_some() {
+            return Err(ServiceError::Error);
+        }
+
         let mut mapped_notifications: Vec<Notification> = vec![];
         for notification in notifications.into_iter() {
             let notification = notification.into();
             mapped_notifications.push(notification);
-        }
-
-        if error.is_some() {
-            return Err(ServiceError::Error);
         }
 
         Ok(mapped_notifications)
@@ -71,7 +71,7 @@ impl NotificationService {
             let notification = notification.unwrap().into();
             return Ok(notification)
         }
-        else if notification.is_none() && error.is_none() {
+        else if error.is_none() {
             return Err(ServiceError::NotFound);
         }
 
