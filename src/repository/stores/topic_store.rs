@@ -50,4 +50,11 @@ impl TopicStore {
             .returning(TopicEntity::as_returning())
             .get_result(connection)
     }
+
+    pub fn delete_topic(&self, connection: &mut PgConnection, topic_id: Uuid) -> Result<usize, diesel::result::Error> {
+        use crate::repository::schema::topics::dsl::topics;
+
+        diesel::delete(topics.find(topic_id))
+            .execute(connection)
+    }
 }

@@ -11,6 +11,8 @@ mod routes;
 mod schemas;
 mod repository;
 mod utils;
+mod services;
+mod errors;
 
 #[tokio::main]
 async fn main() {
